@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum WorkflowStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model User {
+  id            String           @id @default(cuid())
+  email         String           @unique
+  name          String?
+  image         String?
+  createdAt     DateTime         @default(now())
+  memberships   Membership[]
+  assessments   Assessment[]
+  prototypes    Prototype[]
+  workflows     Workflow[]
+  usageLogs     UsageLog[]
+}
+
+model Organization {
+  id             String            @id @default(cuid())
+  name           String
+  createdAt      DateTime          @default(now())
+  memberships    Membership[]
+  assessments    Assessment[]
+  prototypes     Prototype[]
+  workflows      Workflow[]
+  integrations   Integration[]
+  usageLogs      UsageLog[]
+}
+
+model Membership {
+  id             String            @id @default(cuid())
+  userId         String
+  organizationId String
+  role           Role              @default(MEMBER)
+  createdAt      DateTime          @default(now())
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+}
+
+model Assessment {
+  id             String            @id @default(cuid())
+  organizationId String
+  userId         String
+  industry       String
+  businessSize   String
+  toolsUsed      String
+  painPoints     String
+  opportunityMap Json
+  automationIdeas Json
+  estimatedROI   String
+  createdAt      DateTime          @default(now())
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Prototype {
+  id             String            @id @default(cuid())
+  organizationId String
+  userId         String
+  title          String
+  desiredAutomation String
+  technicalArchitecture String
+  requiredApis   Json
+  examplePrompts Json
+  estimatedMonthlyCost String
+  exportJson     Json
+  createdAt      DateTime          @default(now())
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Workflow {
+  id             String            @id @default(cuid())
+  organizationId String
+  userId         String
+  name           String
+  trigger        Json
+  aiStep         Json
+  actionStep     Json
+  status         WorkflowStatus    @default(INACTIVE)
+  lastExecutedAt DateTime?
+  mockResult     Json?
+  createdAt      DateTime          @default(now())
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Integration {
+  id             String            @id @default(cuid())
+  organizationId String
+  provider       String
+  name           String
+  oauthClientId  String?
+  oauthClientSecret String?
+  scopes         Json?
+  isConnected    Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model UsageLog {
+  id             String            @id @default(cuid())
+  organizationId String
+  userId         String?
+  model          String
+  feature        String
+  promptTokens   Int
+  completionTokens Int
+  totalTokens    Int
+  estimatedCost  Float
+  createdAt      DateTime          @default(now())
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+}
